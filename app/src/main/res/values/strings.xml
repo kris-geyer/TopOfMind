@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Top Of Mind</string>
+    <string name="action_settings">Settings</string>
+    <string name="insert_dongle">You should have been provided with a usb dongle to connect to the device to. Please insert this into the phone.</string>
+</resources>
