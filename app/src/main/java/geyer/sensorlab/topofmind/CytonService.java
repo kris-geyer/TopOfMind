@@ -70,7 +70,8 @@ public class CytonService extends Service {
     private int state;
     private boolean batteryNotePresent;
     private final int managerRecheckDuration = 5*1000;
-    private boolean onGoingDataCollecting, testBattery;
+    private boolean testBattery;
+    private int onGoingDataCollecting;
 
     /**
      * ******************************INITIALIZATION************************
@@ -184,9 +185,7 @@ public class CytonService extends Service {
         Gson gson = new Gson();
 
         if (!c0.equals("null")){
-            sigError.reportUpdate("C0: " + c0);
             eegChannels.add(gson.fromJson(c0, EEGChannel.class));
-            sigError.reportUpdate(eegChannels.get(0).location + " - " +eegChannels.get(0).EEG + " - " + eegChannels.get(0).channelNum);
         }
         if(!c1.equals("null")){
             eegChannels.add(gson.fromJson(c1, EEGChannel.class));
@@ -273,10 +272,10 @@ public class CytonService extends Service {
 
     private void initializeManagerComponents() {
         handler = new Handler();
-        state = Constant.NOT_INITIALIZING;
+        updateState(Constant.NOT_INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
         handler.postDelayed(manager, managerRecheckDuration);
         batteryNotePresent = false;
-        onGoingDataCollecting = false;
+        onGoingDataCollecting = 0;
         testBattery = false;
     }
 
@@ -353,7 +352,7 @@ public class CytonService extends Service {
                 sigError.reportUpdate("USB became detached");
                 notifyAboutProblem(true);
                 serialDevice = null;
-                state = Constant.NOT_INITIALIZING;
+                updateState(Constant.NOT_INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
             }
             if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())){
                 reinitializeUSB();
@@ -419,14 +418,14 @@ public class CytonService extends Service {
     }
 
     private void testData() {
-        state = Constant.NOT_INITIALIZING;
+        updateState(Constant.NOT_INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
         serialDevice.write("b".getBytes());
     }
 
     void confirmConnectionWithCyton(){
 
         reportBackToMain("inform change", "testing connection with cyton");
-        state = Constant.INITIALIZING;
+        updateState(Constant.INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
         sigError.reportUpdate("Testing a connection with cyton");
         serialDevice.write("d".getBytes());
         if(testBattery){
@@ -442,12 +441,12 @@ public class CytonService extends Service {
                 testingConnection(String.valueOf(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(data))));
                 break;
             case Constant.IMPEDANCE:
-                onGoingDataCollecting = true;
+                onGoingDataCollecting = 0;
 
                 impedanceTest.supplyData(data);
                 break;
             case Constant.DATA_COLLECTING:
-                onGoingDataCollecting = true;
+                onGoingDataCollecting = 0;
                 dataCollection.storeRawData(data);
                 break;
         }
@@ -464,14 +463,16 @@ public class CytonService extends Service {
         }
         //Device did respond to call
         else if (fromCyton.contains("default")){
-            state = Constant.IMPEDANCE;
+            updateState(Constant.IMPEDANCE, new Throwable().getStackTrace()[0].getLineNumber());
+            onGoingDataCollecting = 0;
             startImpedance();
-            onGoingDataCollecting = true;
+            onGoingDataCollecting = 0;
 
             //report connection to cyton
             sigError.reportUpdate("Communicating with cyton");
 
             //remove a notification about issue with the battery
+            batteryNotePresent= false;
             notificationManager.cancel(2);
 
             //start impedance testing
@@ -479,6 +480,9 @@ public class CytonService extends Service {
 
         }else if(fromCyton.equals("null")){
             sigError.reportUpdate("test connection runnable is the problem");
+            if (!batteryNotePresent){
+                notifyAboutProblem(false);
+            }
 
         }else if (fromCyton.length() > 100){
             serialDevice.write("s".getBytes());
@@ -520,20 +524,25 @@ public class CytonService extends Service {
                     confirmConnectionWithCyton();
                     break;
                 case Constant.IMPEDANCE:
-                    if (!onGoingDataCollecting){
-                        state = Constant.INITIALIZING;
+                    sigError.reportUpdate("Assessing impedance - onGoingDataCollecting: " + onGoingDataCollecting);
+                    if (onGoingDataCollecting > 1){
+                        updateState(Constant.INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
                         testBattery = true;
                         confirmConnectionWithCyton();
+                        reportBackToMain("finish activity", "confirmed");
                     }
-                    onGoingDataCollecting = false;
+                    onGoingDataCollecting ++;
                     break;
                 case Constant.DATA_COLLECTING:
-                    if (!onGoingDataCollecting){
-                        state = Constant.INITIALIZING;
+                    sigError.reportUpdate("Assessing data collection - onGoingDataCollecting: " + onGoingDataCollecting);
+
+                    if (onGoingDataCollecting > 1){
+
+                        updateState(Constant.INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
                         testBattery = true;
                         confirmConnectionWithCyton();
                     }
-                    onGoingDataCollecting = false;
+                    onGoingDataCollecting++;
                     break;
 
             }
@@ -541,6 +550,10 @@ public class CytonService extends Service {
         }
     }
 
+    void updateState(int state, int line){
+        this.state = state;
+        sigError.reportUpdate("State changed to: " + state + " change was called from line: " + line);
+    }
 
     void restartManager(){
         handler.postDelayed(manager, managerRecheckDuration);
@@ -551,7 +564,7 @@ public class CytonService extends Service {
      */
 
     void startImpedance(){
-        state = Constant.IMPEDANCE;
+        updateState(Constant.IMPEDANCE, new Throwable().getStackTrace()[0].getLineNumber());
 
         sigError.reportUpdate("impedance test to begin");
         reportBackToMain("inform change", "impedance test starting");
@@ -589,7 +602,7 @@ public class CytonService extends Service {
 
         int currentState = establishState();
         if(currentState == 4){
-            state = Constant.IMPEDANCE;
+            updateState(Constant.IMPEDANCE, new Throwable().getStackTrace()[0].getLineNumber());
 
             if (channel == 1){
                 notificationManager.cancel(0);
@@ -602,8 +615,8 @@ public class CytonService extends Service {
             sigError.reportUpdate("current channel: " + channel);
             if (channel >= 1 + (servicePreferences.getInt("Channels", 0))){
                 servicePreferences.edit().putInt("channel", 1).apply();
+                updateState(Constant.NOT_INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
                 reportTheConnectivityLevel();
-                state = Constant.NOT_INITIALIZING;
                 return;
             }
 
@@ -688,17 +701,16 @@ public class CytonService extends Service {
      */
 
     void collectData(){
-        state = Constant.DATA_COLLECTING;
         reportBackToMain("inform change", "can start to collect data.");
-        state = Constant.DATA_COLLECTING;
-        onGoingDataCollecting = true;
+        updateState(Constant.DATA_COLLECTING, new Throwable().getStackTrace()[0].getLineNumber());
+        onGoingDataCollecting = 0;
         beginCollectingData();
     }
 
     void beginCollectingData(){
         reportBackToMain( "inform change","Collecting data");
         sigError.reportUpdate("Starting data collection");
-        state = Constant.DATA_COLLECTING;
+        updateState(Constant.DATA_COLLECTING, new Throwable().getStackTrace()[0].getLineNumber());
         try {
 
             serialDevice.write("d".getBytes());
@@ -733,9 +745,8 @@ public class CytonService extends Service {
 
             Intent intent = new Intent("cytonService");
             intent.putExtra("purpose", "retryBatteryDeleted");
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 10101, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-            builder.setDeleteIntent(pendingIntent);
+
             notificationManager.notify(2, builder.build());
         }
     }

@@ -81,6 +81,9 @@ public class Connect extends Activity implements View.OnClickListener {
                         sigError.reportUpdate("Connect informed that the service has been initialized");
                         stopConnect();
                     }
+                    if(purpose.equals("finish activity")){
+                        stopConnect();
+                    }
                 }
             }
         }
