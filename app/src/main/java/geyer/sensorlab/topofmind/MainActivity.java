@@ -9,7 +9,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -109,10 +108,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch (view.getId()){
             case R.id.btnTest:
-                reportErrorLogs();
+
+                sendEmail();
                 break;
             case R.id.btnNextStep:
-                sendEmail();
+                //reportProgress();
+                reportErrorLogs();
                 break;
             case R.id.btnScanQR:
                 scanQR();

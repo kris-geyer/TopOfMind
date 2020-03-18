@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:android="http://schemas.android.com/apk/res/android" >
+    android:background="#4368AD">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:text="Top Of Mind"
+        android:textAlignment="center"
+        android:textSize="30sp"
+        android:textColor="#ffffff"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/textView"
@@ -13,7 +28,9 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        android:text="Stuff and things"
+        android:text="Status"
+        android:textColor="#ffffff"
+        android:textSize="20sp"
         android:textIsSelectable="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -23,43 +40,53 @@
 
     <LinearLayout
         android:id="@+id/linearLayout"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
+        android:orientation="vertical"
         android:scrollbars="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.25" >
+        app:layout_constraintVertical_bias="0.25">
 
         <Button
             android:id="@+id/btnTest"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/button"
+            android:layout_margin="2dp"
+            android:textSize="20sp"
+            android:textColor="#ffffff"
             android:text="Report error" />
 
         <Button
             android:id="@+id/btnNextStep"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
+            android:background="@drawable/button"
+            android:textSize="20sp"
+            android:layout_margin="2dp"
+            android:textColor="#ffffff"
             android:text="Next Step" />
 
         <Button
-            android:layout_width="wrap_content"
+            android:id="@+id/btnScanQR"
+            android:enabled="false"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="scan QR code"
-            android:id="@+id/btnScanQR"/>
+            android:background="@drawable/button"
+            android:layout_margin="2dp"
+            android:textSize="20sp"
+            android:textColor="#ffffff"
+            android:text="scan QR code" />
 
 
     </LinearLayout>
-
-
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

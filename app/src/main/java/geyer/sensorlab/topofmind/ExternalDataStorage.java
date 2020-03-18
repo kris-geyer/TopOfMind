@@ -9,17 +9,20 @@ import java.io.IOException;
 
 class ExternalDataStorage {
 
-    final String fileName;
-    final File file;
-    final FileOutputStream fileOutputStream;
+    private final String fileName;
+    private final File file;
+    private final FileOutputStream fileOutputStream;
+    private final int numberChannels;
 
-    ExternalDataStorage (String fileName) throws FileNotFoundException {
+
+    ExternalDataStorage (String fileName, int numberChannels) throws FileNotFoundException {
         this.fileName = fileName;
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)  + File.separator + "brain_stuff");
         dir.mkdir();
 
         this.file = new File(dir, this.fileName);
         this.fileOutputStream = new FileOutputStream(this.file, true);
+        this.numberChannels = numberChannels;
     }
 
     void writeToFile(byte[] toEnter) throws IOException {
@@ -31,18 +34,15 @@ class ExternalDataStorage {
     }
 
     void addEEGData(EEGDataRow row) throws IOException {
-        String stringBuilder =
-                row.row + " : " +
-                        row.chan1 + " : " +
-                        row.chan2 + " : " +
-                        row.chan3 + " : " +
-                        row.chan4 + " : " +
-                        row.chan5 + " : " +
-                        row.chan6 + " : " +
-                        row.chan7 + " : " +
-                        row.chan8 + " : " +
-                        row.timestamp + "\n";
-        fileOutputStream.write(stringBuilder.getBytes());
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(row.row).append(" : ");
+
+        for (Double signal: row.signal){
+            stringBuilder.append(signal).append(" : ");
+        }
+        stringBuilder.append(row.timestamp).append("\n");
+
+        fileOutputStream.write(stringBuilder.toString().getBytes());
     }
 
     void closeFile () throws IOException {

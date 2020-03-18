@@ -72,6 +72,7 @@ public class CytonService extends Service {
     private final int managerRecheckDuration = 5*1000;
     private boolean testBattery;
     private int onGoingDataCollecting;
+    private int minutesUntilDataAssessment = 0;
 
     /**
      * ******************************INITIALIZATION************************
@@ -103,7 +104,6 @@ public class CytonService extends Service {
 
                     Timber.e(e.getLocalizedMessage());
                 }
-
             } else {
                 if (manager == null) {
                     Timber.e("Notification manager equals null");
@@ -164,7 +164,7 @@ public class CytonService extends Service {
 
         eegChannels = new LinkedList<>();
 
-        establishEEGChannels(qrInstructions.c0,
+        int numchannels = establishEEGChannels(qrInstructions.c0,
                 qrInstructions.c1,
                 qrInstructions.c2,
                 qrInstructions.c3,
@@ -173,15 +173,17 @@ public class CytonService extends Service {
                 qrInstructions.c6,
                 qrInstructions.c7);
 
+        minutesUntilDataAssessment = qrInstructions.frequencyOfImpedance;
+
         impedanceTest = new ImpedanceTest(sigError, this);
         try {
-            dataCollection = new DataCollection(sigError);
+            dataCollection = new DataCollection(sigError, numchannels);
         } catch (IOException e) {
             sigError.reportError(e.getMessage(),e.getStackTrace());
         }
     }
 
-    private void establishEEGChannels(String c0, String c1, String c2, String c3, String c4, String c5, String c6, String c7) {
+    private int establishEEGChannels(String c0, String c1, String c2, String c3, String c4, String c5, String c6, String c7) {
         Gson gson = new Gson();
 
         if (!c0.equals("null")){
@@ -212,6 +214,8 @@ public class CytonService extends Service {
         sigError.reportUpdate("Number of channels:" + eegChannels.size());
 
         servicePreferences.edit().putInt("Channels", eegChannels.size()).apply();
+
+        return eegChannels.size();
     }
 
     //BROADCAST RECEIVERS
@@ -353,9 +357,14 @@ public class CytonService extends Service {
                 notifyAboutProblem(true);
                 serialDevice = null;
                 updateState(Constant.NOT_INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
+                handler.removeCallbacks(manager);
             }
             if(UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction())){
+                notificationManager.cancel(1);
+                handler.postDelayed(manager, managerRecheckDuration);
                 reinitializeUSB();
+
+
             }
         }
     };
@@ -502,9 +511,6 @@ public class CytonService extends Service {
         }
     }
 
-
-
-    //NOT SURE WHY THIS IS HERE, BUT KEEP IT INCASE IT NEEDS TO RETURN
     private Runnable testConnection = () -> testingConnection("null");
 
     /**
@@ -515,6 +521,9 @@ public class CytonService extends Service {
         @Override
         public void run() {
             sigError.reportUpdate("manager reviewing");
+            if (state != Constant.DATA_COLLECTING){
+                handler.removeCallbacks(testImpedance);
+            }
             switch (state){
                 case Constant.NOT_INITIALIZING:
 
@@ -529,7 +538,6 @@ public class CytonService extends Service {
                         updateState(Constant.INITIALIZING, new Throwable().getStackTrace()[0].getLineNumber());
                         testBattery = true;
                         confirmConnectionWithCyton();
-                        reportBackToMain("finish activity", "confirmed");
                     }
                     onGoingDataCollecting ++;
                     break;
@@ -568,6 +576,7 @@ public class CytonService extends Service {
 
         sigError.reportUpdate("impedance test to begin");
         reportBackToMain("inform change", "impedance test starting");
+        reportToConnect("finish activity");
         try {
             performImpedanceTest();
         } catch (InterruptedException e) {
@@ -641,7 +650,7 @@ public class CytonService extends Service {
         ArrayList<String> unconnectedChannels = new ArrayList<>();
         sigError.reportUpdate("connectivity identified");
         try {
-            ExternalDataStorage externalDataStorage = new ExternalDataStorage("Impedance.txt");
+            ExternalDataStorage externalDataStorage = new ExternalDataStorage("Impedance.txt", servicePreferences.getInt("Channels", 0));
             externalDataStorage.writeToFile("Impedance test concluded at: " + System.currentTimeMillis() +"\n");
 
             for (int i = 0; i < servicePreferences.getInt("Channels", 0) ; i++){
@@ -705,6 +714,7 @@ public class CytonService extends Service {
         updateState(Constant.DATA_COLLECTING, new Throwable().getStackTrace()[0].getLineNumber());
         onGoingDataCollecting = 0;
         beginCollectingData();
+        handler.postDelayed(testImpedance, 1000*60*minutesUntilDataAssessment);
     }
 
     void beginCollectingData(){
@@ -724,6 +734,14 @@ public class CytonService extends Service {
             sigError.reportError(e.getMessage(),e.getStackTrace());
         }
     }
+
+    private Runnable testImpedance = new Runnable() {
+        @Override
+        public void run() {
+            onGoingDataCollecting = 0;
+            startImpedance();
+        }
+    };
 
     /**
      * *******************************INFORMING ABOUT SERVICE STATE*****************
@@ -755,6 +773,12 @@ public class CytonService extends Service {
         Intent intent = new Intent("Main_Receiver");
         intent.putExtra("purpose", purpose);
         intent.putExtra("change", change);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private void reportToConnect (String info){
+        Intent intent = new Intent("toConnect");
+        intent.putExtra("purpose", info);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 

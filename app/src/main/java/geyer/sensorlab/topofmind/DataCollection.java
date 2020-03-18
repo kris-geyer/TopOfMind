@@ -11,6 +11,7 @@ class DataCollection {
 
     private final SigError sigError;
     private final HandlingBytes h;
+    private final int channels;
 
     private ExternalDataStorage externalDataStorage;
 
@@ -18,12 +19,12 @@ class DataCollection {
 
     private boolean ongoing;
 
-    DataCollection(SigError sigError) throws IOException {
-        externalDataStorage = new ExternalDataStorage("EEG.txt");
+    DataCollection(SigError sigError, int channels) throws IOException {
+        externalDataStorage = new ExternalDataStorage("EEG.txt", channels);
 
         h = new HandlingBytes();
         this.sigError = sigError;
-
+        this.channels = channels;
         ongoing = true;
     }
 
@@ -45,18 +46,13 @@ class DataCollection {
                             if(i + 33 < byteArray.length){
                                 final byte[] toReview = Arrays.copyOfRange(byteArray, count, count + 34);
                                 if(h.byteToHex(toReview[33]).equals("a0") &&  h.byteToHex(toReview[0]).equals("a0") && (h.byteToHex(toReview[32]).equals("c4") || h.byteToHex(toReview[32]).equals("c3"))) {
-                                    EEGDataRow eegDataRow = new EEGDataRow(
-                                            String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[1]))),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[2],toReview[3],toReview[4]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[5],toReview[6],toReview[7]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[8],toReview[9],toReview[10]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[11],toReview[12],toReview[13]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[14],toReview[15],toReview[16]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[17],toReview[18],toReview[19]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[20],toReview[21],toReview[22]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[23],toReview[24],toReview[25]})),
-                                            String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[29]) + h.byteToHex(toReview[30]) +h.byteToHex(toReview[31])))
-                                    );
+                                    LinkedList<Double> signals = new LinkedList();
+                                    for (int j = 0; j < channels; j++){
+                                        signals.add(h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[(j*3)+2],toReview[(j*3)+3], toReview[(j*3)+4]})));
+                                    }
+
+                                    EEGDataRow eegDataRow = new EEGDataRow(String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[1]))), signals, String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[29]) + h.byteToHex(toReview[30]) +h.byteToHex(toReview[31]))));
+
                                     eegDataRows.add(eegDataRow);
                                 }else{
                                     break;
@@ -64,18 +60,12 @@ class DataCollection {
                             }else{
                                 final byte[] toReview = Arrays.copyOfRange(byteArray, count, count + 33);
                                 if(h.byteToHex(toReview[0]).equals("a0") && (h.byteToHex(toReview[32]).equals("c4") || h.byteToHex(toReview[32]).equals("c3"))) {
-                                    EEGDataRow eegDataRow = new EEGDataRow(
-                                            String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[1]))),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[2],toReview[3],toReview[4]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[5],toReview[6],toReview[7]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[8],toReview[9],toReview[10]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[11],toReview[12],toReview[13]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[14],toReview[15],toReview[16]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[17],toReview[18],toReview[19]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[20],toReview[21],toReview[22]})),
-                                            h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[23],toReview[24],toReview[25]})),
-                                            String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[29]) + h.byteToHex(toReview[30]) +h.byteToHex(toReview[31])))
-                                    );
+                                    LinkedList<Double> signals = new LinkedList();
+                                    for (int j = 0; j < channels; j++){
+                                        signals.add(h.changeToMicroVolts(h.myInterpret24bitAsInt32(new byte[]{toReview[(j*3)+2],toReview[(j*3)+3], toReview[(j*3)+4]})));
+                                    }
+                                    EEGDataRow eegDataRow = new EEGDataRow(String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[1]))), signals, String.valueOf(h.interpretHexAsInt32(h.byteToHex(toReview[29]) + h.byteToHex(toReview[30]) +h.byteToHex(toReview[31]))));
+
                                     eegDataRows.add(eegDataRow);
                                 }else{
                                     break;
